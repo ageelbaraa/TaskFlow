@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using TaskBoard.Domain.Entities;
+// 'Board' would otherwise resolve to the TaskBoard.Application.Board namespace
+// rather than the domain entity of the same name.
+using Board = TaskBoard.Domain.Entities.Board;
 
 namespace TaskBoard.Application.Common.Interfaces;
 

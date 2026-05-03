@@ -65,6 +65,7 @@ app.MapAuthEndpoints();
 app.MapBoardEndpoints();
 app.MapColumnEndpoints();
 app.MapTaskCardEndpoints();
+app.MapCommentEndpoints();
 
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }))
     .WithTags("Health")

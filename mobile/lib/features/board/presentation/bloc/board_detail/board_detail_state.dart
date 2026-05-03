@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../domain/entities/board_entity.dart';
+import '../../../domain/entities/online_user_entity.dart';
 
 sealed class BoardDetailState extends Equatable {
   const BoardDetailState();
@@ -19,10 +20,18 @@ final class BoardDetailLoading extends BoardDetailState {
 }
 
 final class BoardDetailLoaded extends BoardDetailState {
-  const BoardDetailLoaded(this.board);
+  const BoardDetailLoaded(this.board, {this.onlineUsers = const []});
   final BoardDetailEntity board;
+  final List<OnlineUserEntity> onlineUsers;
+
+  BoardDetailLoaded copyWithUsers(List<OnlineUserEntity> users) =>
+      BoardDetailLoaded(board, onlineUsers: users);
+
+  BoardDetailLoaded copyWithBoard(BoardDetailEntity newBoard) =>
+      BoardDetailLoaded(newBoard, onlineUsers: onlineUsers);
+
   @override
-  List<Object?> get props => [board];
+  List<Object?> get props => [board, onlineUsers];
 }
 
 final class BoardDetailError extends BoardDetailState {

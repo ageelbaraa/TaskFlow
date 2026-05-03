@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:signalr_netcore/signalr_netcore.dart';
 
 import '../../../../core/storage/secure_storage_service.dart';
+import '../../domain/entities/online_user_entity.dart';
 
 // ── Event payloads ────────────────────────────────────────────────────────────
 
@@ -30,10 +31,29 @@ class UserPresenceEvent {
   final String? userName;
 }
 
+class CommentAddedEvent {
+  const CommentAddedEvent({
+    required this.taskCardId,
+    required this.id,
+    required this.authorName,
+    required this.body,
+    required this.createdAt,
+    required this.boardId,
+    required this.authorId,
+  });
+  final String taskCardId;
+  final String id;
+  final String authorName;
+  final String body;
+  final String createdAt;
+  final String boardId;
+  final String authorId;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
-/// Manages the SignalR connection to /hubs/board.
-/// Call [connect] when entering a board, [disconnect] when leaving.
+/// Singleton SignalR service. Shared by [BoardDetailBloc] and [CommentBloc]
+/// so both features operate on the same WebSocket connection.
 class BoardHubService {
   BoardHubService(this._storage);
 
@@ -52,21 +72,25 @@ class BoardHubService {
   final _cardMovedCtrl = StreamController<CardMovedEvent>.broadcast();
   final _userJoinedCtrl = StreamController<UserPresenceEvent>.broadcast();
   final _userLeftCtrl = StreamController<UserPresenceEvent>.broadcast();
+  final _commentAddedCtrl = StreamController<CommentAddedEvent>.broadcast();
 
   Stream<CardMovedEvent> get cardMoved => _cardMovedCtrl.stream;
   Stream<UserPresenceEvent> get userJoined => _userJoinedCtrl.stream;
   Stream<UserPresenceEvent> get userLeft => _userLeftCtrl.stream;
+  Stream<CommentAddedEvent> get commentAdded => _commentAddedCtrl.stream;
 
-  /// Whether the hub connection is currently established.
   bool get isConnected =>
       _connection?.state == HubConnectionState.Connected;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
-  /// Establishes a hub connection and joins [boardId]'s group.
-  Future<void> connect(String boardId) async {
+  /// Establishes a hub connection, joins [boardId]'s group, and returns the
+  /// initial list of online users so the caller can seed presence state.
+  Future<List<OnlineUserEntity>> connect(String boardId) async {
     if (_connection?.state == HubConnectionState.Connected &&
-        _activeBoardId == boardId) return;
+        _activeBoardId == boardId) {
+      return getOnlineUsers(boardId);
+    }
 
     await _disconnect();
 
@@ -89,26 +113,35 @@ class BoardHubService {
     _registerHandlers();
 
     await _connection!.start();
-    await _connection!.invoke('JoinBoard', args: [boardId]);
+
+    // JoinBoard returns List<{userId, userName}> from the hub.
+    final raw = await _connection!.invoke('JoinBoard', args: [boardId]);
     _activeBoardId = boardId;
+
+    return _parseOnlineUsers(raw);
   }
 
-  /// Leaves the board group and closes the connection.
+  Future<List<OnlineUserEntity>> getOnlineUsers(String boardId) async {
+    if (!isConnected) return [];
+    try {
+      final raw = await _connection!.invoke('GetOnlineUsers', args: [boardId]);
+      return _parseOnlineUsers(raw);
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<void> disconnect(String boardId) async {
     if (_connection?.state == HubConnectionState.Connected) {
       try {
         await _connection!.invoke('LeaveBoard', args: [boardId]);
-      } catch (_) {
-        // Best-effort leave; connection may already be closing.
-      }
+      } catch (_) {}
     }
     await _disconnect();
   }
 
   // ── Client → Server methods ────────────────────────────────────────────────
 
-  /// Sends a card move through the hub. The server processes the command and
-  /// broadcasts [CardMoved] to all board group members (including the caller).
   Future<void> moveCard({
     required String cardId,
     required String toColumnId,
@@ -152,6 +185,27 @@ class BoardHubService {
         boardId: args[1]?.toString() ?? '',
       ));
     });
+
+    conn.on('CommentAdded', (List<Object?>? args) {
+      if (args == null || args.length < 2) return;
+      // args[0] = taskCardId (Guid), args[1] = CommentDto object
+      final taskCardId = args[0]?.toString() ?? '';
+      final dto = args[1];
+      if (dto == null) return;
+
+      final map = _toMap(dto);
+      if (map == null) return;
+
+      _commentAddedCtrl.add(CommentAddedEvent(
+        taskCardId: taskCardId,
+        id: map['id']?.toString() ?? '',
+        authorName: map['authorName']?.toString() ?? '',
+        body: map['body']?.toString() ?? '',
+        createdAt: map['createdAt']?.toString() ?? '',
+        boardId: map['boardId']?.toString() ?? '',
+        authorId: map['authorId']?.toString() ?? '',
+      ));
+    });
   }
 
   Future<void> _disconnect() async {
@@ -160,17 +214,35 @@ class BoardHubService {
     _activeBoardId = null;
   }
 
+  List<OnlineUserEntity> _parseOnlineUsers(Object? raw) {
+    if (raw == null) return [];
+    if (raw is! List) return [];
+    return raw
+        .whereType<Map<Object?, Object?>>()
+        .map((m) => OnlineUserEntity(
+              userId: m['userId']?.toString() ?? '',
+              userName: m['userName']?.toString() ?? '',
+            ))
+        .where((u) => u.userId.isNotEmpty)
+        .toList();
+  }
+
+  Map<Object?, Object?>? _toMap(Object? v) {
+    if (v is Map<Object?, Object?>) return v;
+    return null;
+  }
+
   int _toInt(Object? v) {
     if (v is int) return v;
     if (v is num) return v.toInt();
     return int.tryParse(v?.toString() ?? '') ?? 0;
   }
 
-  /// Closes the stream controllers. Call only when the service itself is disposed.
   Future<void> dispose() async {
     await _disconnect();
     await _cardMovedCtrl.close();
     await _userJoinedCtrl.close();
     await _userLeftCtrl.close();
+    await _commentAddedCtrl.close();
   }
 }

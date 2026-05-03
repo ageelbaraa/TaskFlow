@@ -5,19 +5,20 @@ import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/board/domain/entities/task_card_entity.dart';
 import '../../features/board/presentation/pages/board_detail_page.dart';
 import '../../features/board/presentation/pages/boards_page.dart';
+import '../../features/tasks/presentation/pages/task_detail_page.dart';
 
-/// Route name constants for use with [GoRouter.goNamed].
 class Routes {
   Routes._();
   static const login = 'login';
   static const register = 'register';
   static const boards = 'boards';
   static const boardDetail = 'board-detail';
+  static const taskDetail = 'task-detail';
 }
 
-/// Configures [GoRouter] with auth-based redirect guards.
 class AppRouter {
   AppRouter(AuthBloc Function() authBlocFactory)
       : _authBlocFactory = authBlocFactory;
@@ -59,6 +60,19 @@ class AppRouter {
             builder: (_, state) => BoardDetailPage(
               boardId: state.pathParameters['boardId']!,
             ),
+            routes: [
+              GoRoute(
+                path: 'cards/:cardId',
+                name: Routes.taskDetail,
+                builder: (_, state) {
+                  // TaskCardEntity is passed as route extra to avoid a
+                  // redundant network fetch — the card data is already loaded
+                  // in BoardDetailPage's state.
+                  final card = state.extra as TaskCardEntity;
+                  return TaskDetailPage(card: card);
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -66,7 +80,6 @@ class AppRouter {
   );
 }
 
-/// Bridges [AuthBloc] stream to [GoRouter.refreshListenable].
 class _RouterNotifier extends ChangeNotifier {
   _RouterNotifier(AuthBloc Function() factory) {
     factory().stream.listen((_) => notifyListeners());

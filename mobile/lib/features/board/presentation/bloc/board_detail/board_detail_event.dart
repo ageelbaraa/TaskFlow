@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../domain/entities/online_user_entity.dart';
+
 sealed class BoardDetailEvent extends Equatable {
   const BoardDetailEvent();
 }
@@ -32,7 +34,6 @@ final class BoardDetailAddCardEvent extends BoardDetailEvent {
   List<Object?> get props => [columnId, title];
 }
 
-/// Optimistic card move: update local state immediately, then confirm with server.
 final class BoardDetailMoveCardEvent extends BoardDetailEvent {
   const BoardDetailMoveCardEvent({
     required this.cardId,
@@ -48,7 +49,6 @@ final class BoardDetailMoveCardEvent extends BoardDetailEvent {
   List<Object?> get props => [cardId, toColumnId, newOrder];
 }
 
-/// Called by SignalR in Phase 3 to push a server-confirmed card position.
 final class BoardDetailCardMovedServerEvent extends BoardDetailEvent {
   const BoardDetailCardMovedServerEvent({
     required this.cardId,
@@ -60,4 +60,32 @@ final class BoardDetailCardMovedServerEvent extends BoardDetailEvent {
   final int newOrder;
   @override
   List<Object?> get props => [cardId, toColumnId, newOrder];
+}
+
+// ── Presence events ───────────────────────────────────────────────────────────
+
+/// Emitted when the hub sends back the initial list of online users on join.
+final class BoardDetailUsersLoadedEvent extends BoardDetailEvent {
+  const BoardDetailUsersLoadedEvent(this.users);
+  final List<OnlineUserEntity> users;
+  @override
+  List<Object?> get props => [users];
+}
+
+final class BoardDetailUserJoinedEvent extends BoardDetailEvent {
+  const BoardDetailUserJoinedEvent({
+    required this.userId,
+    required this.userName,
+  });
+  final String userId;
+  final String userName;
+  @override
+  List<Object?> get props => [userId, userName];
+}
+
+final class BoardDetailUserLeftEvent extends BoardDetailEvent {
+  const BoardDetailUserLeftEvent(this.userId);
+  final String userId;
+  @override
+  List<Object?> get props => [userId];
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/router/app_router.dart';
+import '../../domain/entities/online_user_entity.dart';
 import '../../domain/entities/task_card_entity.dart';
 import '../bloc/board_detail/board_detail_bloc.dart';
 import '../bloc/board_detail/board_detail_event.dart';
@@ -9,7 +12,6 @@ import '../bloc/board_detail/board_detail_state.dart';
 import '../widgets/create_board_dialog.dart';
 import '../widgets/kanban_column_widget.dart';
 
-/// Full-screen Kanban board with horizontally scrollable columns and draggable cards.
 class BoardDetailPage extends StatelessWidget {
   const BoardDetailPage({super.key, required this.boardId});
 
@@ -20,7 +22,10 @@ class BoardDetailPage extends StatelessWidget {
     return BlocProvider<BoardDetailBloc>(
       create: (_) =>
           getIt<BoardDetailBloc>()..add(BoardDetailLoadEvent(boardId)),
-      child: _BoardDetailView(boardId: boardId),
+      child: PopScope(
+        canPop: true,
+        child: _BoardDetailView(boardId: boardId),
+      ),
     );
   }
 }
@@ -40,6 +45,8 @@ class _BoardDetailView extends StatelessWidget {
                 ? Text(state.board.name)
                 : const Text('Board'),
             actions: [
+              if (state is BoardDetailLoaded && state.onlineUsers.isNotEmpty)
+                _OnlineAvatarRow(users: state.onlineUsers),
               if (state is BoardDetailLoaded)
                 IconButton(
                   icon: const Icon(Icons.add_box_outlined),
@@ -81,8 +88,7 @@ class _BoardDetailView extends StatelessWidget {
                         const Text('No columns yet.'),
                         const SizedBox(height: 12),
                         FilledButton.icon(
-                          onPressed: () =>
-                              _showAddColumn(context, board.id),
+                          onPressed: () => _showAddColumn(context, board.id),
                           icon: const Icon(Icons.add),
                           label: const Text('Add column'),
                         ),
@@ -112,10 +118,9 @@ class _BoardDetailView extends StatelessWidget {
                               onAddCard: (colId) =>
                                   _showAddCard(context, colId),
                               onCardTap: (card) =>
-                                  _showCardDetail(context, card),
+                                  _navigateToTask(context, card),
                             ),
                           ),
-                          // Trailing "add column" button
                           Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 20),
@@ -162,63 +167,86 @@ class _BoardDetailView extends StatelessWidget {
     );
   }
 
-  void _showCardDetail(BuildContext context, TaskCardEntity card) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _CardDetailSheet(card: card),
+  void _navigateToTask(BuildContext context, TaskCardEntity card) {
+    context.pushNamed(
+      Routes.taskDetail,
+      pathParameters: {
+        'boardId': boardId,
+        'cardId': card.id,
+      },
+      extra: card,
     );
   }
 }
 
-class _CardDetailSheet extends StatelessWidget {
-  const _CardDetailSheet({required this.card});
-  final TaskCardEntity card;
+// ── Online avatars ────────────────────────────────────────────────────────────
+
+class _OnlineAvatarRow extends StatelessWidget {
+  const _OnlineAvatarRow({required this.users});
+
+  final List<OnlineUserEntity> users;
+
+  static const _maxVisible = 4;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.5,
-      maxChildSize: 0.9,
-      builder: (_, controller) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: ListView(
-          controller: controller,
-          children: [
-            Text(card.title, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                Chip(label: Text(card.priority)),
-                if (card.assigneeName != null)
-                  Chip(
-                    avatar: const Icon(Icons.person_outline, size: 16),
-                    label: Text(card.assigneeName!),
+    final visible = users.take(_maxVisible).toList();
+    final overflow = users.length - _maxVisible;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ...visible.map(
+            (u) => Tooltip(
+              message: u.userName,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: CircleAvatar(
+                  radius: 14,
+                  backgroundColor: _colorForName(u.userName),
+                  child: Text(
+                    u.userName.isNotEmpty
+                        ? u.userName[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold),
                   ),
-              ],
+                ),
+              ),
             ),
-            if (card.description != null && card.description!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(card.description!, style: theme.textTheme.bodyMedium),
-            ],
-            const SizedBox(height: 16),
-            Text('Comments (${card.commentCount})',
-                style: theme.textTheme.labelMedium),
-            const SizedBox(height: 4),
-            const Text('Comments feature coming in Phase 4'),
-          ],
-        ),
+          ),
+          if (overflow > 0)
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: Colors.grey,
+              child: Text(
+                '+$overflow',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+            ),
+        ],
       ),
     );
   }
+
+  Color _colorForName(String name) {
+    const colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.teal,
+      Colors.red,
+    ];
+    if (name.isEmpty) return Colors.grey;
+    return colors[name.codeUnitAt(0) % colors.length];
+  }
 }
 
-/// Enables mouse drag scrolling on desktop/web without showing a scrollbar.
 class _HorizontalScrollBehavior extends ScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {

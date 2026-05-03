@@ -15,7 +15,7 @@ namespace TaskBoard.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Adds EF Core (PostgreSQL), JWT authentication, and Redis services.
+    /// Adds EF Core (PostgreSQL), JWT authentication, Redis, and presence services.
     /// </summary>
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services,
@@ -70,6 +70,13 @@ public static class DependencyInjection
         {
             services.AddSingleton<IConnectionMultiplexer>(
                 ConnectionMultiplexer.Connect(redisConnection));
+            // Redis-backed presence: accurate across multiple server replicas
+            services.AddSingleton<IPresenceService, RedisPresenceService>();
+        }
+        else
+        {
+            // In-process fallback for local dev without a Redis container
+            services.AddSingleton<IPresenceService, InMemoryPresenceService>();
         }
 
         return services;

@@ -24,8 +24,9 @@ RUN dotnet publish src/TaskBoard.API/TaskBoard.API.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Non-root user for security
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+# Non-root user for security.
+# dotnet/aspnet is Debian-based: use groupadd/useradd, not Alpine's addgroup/adduser.
+RUN groupadd --system appgroup && useradd --system --gid appgroup appuser
 USER appuser
 
 COPY --from=build /app/publish .

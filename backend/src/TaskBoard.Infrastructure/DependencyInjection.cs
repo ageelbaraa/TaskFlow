@@ -30,6 +30,7 @@ public static class DependencyInjection
             sp.GetRequiredService<ApplicationDbContext>());
 
         services.AddScoped<IJwtService, JwtService>();
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
 
         var jwtKey = configuration["Jwt:Key"]
             ?? throw new InvalidOperationException("Jwt:Key must be configured.");

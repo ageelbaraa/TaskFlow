@@ -15,6 +15,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.3.4" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
+    <!-- SignalR is included in the net10.0 web SDK; explicit reference removed (NU1510) -->
   </ItemGroup>
 </Project>

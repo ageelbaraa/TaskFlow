@@ -9,7 +9,7 @@ public class Column : BaseEntity
     public Guid BoardId { get; set; }
 
     /// <summary>Gets or sets the parent board navigation property.</summary>
-    public Board Board { get; set; } = null!;
+    public BoardModel Board { get; set; } = null!;
 
     /// <summary>Gets or sets the column header title.</summary>
     public string Title { get; set; } = string.Empty;

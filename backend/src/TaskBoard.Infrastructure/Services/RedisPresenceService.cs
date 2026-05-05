@@ -43,7 +43,7 @@ public sealed class RedisPresenceService : IPresenceService
         var entries = await db.HashGetAllAsync(BoardKey(boardId));
         return entries
             .Where(e => e.Name.HasValue && e.Value.HasValue)
-            .Select(e => new OnlineUserDto(Guid.Parse(e.Name!), e.Value!))
+            .Select(e => new OnlineUserDto(Guid.Parse((string)e.Name!), (string)e.Value!))
             .ToList();
     }
 

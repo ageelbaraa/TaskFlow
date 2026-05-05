@@ -19,7 +19,7 @@ public class User : BaseEntity
     public UserRole Role { get; set; } = UserRole.Member;
 
     /// <summary>Gets or sets the boards this user owns.</summary>
-    public ICollection<Board> OwnedBoards { get; set; } = new List<Board>();
+    public ICollection<BoardModel> OwnedBoards { get; set; } = new List<BoardModel>();
 
     /// <summary>Gets or sets the board memberships for this user.</summary>
     public ICollection<BoardMember> BoardMemberships { get; set; } = new List<BoardMember>();

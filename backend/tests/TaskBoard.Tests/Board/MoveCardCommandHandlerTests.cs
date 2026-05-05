@@ -18,13 +18,13 @@ public sealed class MoveCardCommandHandlerTests
         return new ApplicationDbContext(opts);
     }
 
-    private static (User owner, Domain.Entities.Board board,
+    private static (User owner, Domain.Entities.BoardModel board,
         Column colA, Column colB, TaskCard card) Seed(ApplicationDbContext db)
     {
         var owner = new User { Name = "O", Email = "o@e.com", PasswordHash = "h", Role = UserRole.Admin };
         db.Users.Add(owner);
 
-        var board = new Domain.Entities.Board { Name = "B", OwnerId = owner.Id, Owner = owner };
+        var board = new Domain.Entities.BoardModel { Name = "B", OwnerId = owner.Id, Owner = owner };
         db.Boards.Add(board);
 
         var colA = new Column { Board = board, BoardId = board.Id, Title = "Todo", Order = 0 };

@@ -26,7 +26,7 @@ public sealed class CreateBoardCommandHandler
         if (owner is null)
             return Result<BoardDto>.Failure("User not found.");
 
-        var board = new Domain.Entities.Board
+        var board = new Domain.Entities.BoardModel
         {
             Name = request.Name.Trim(),
             OwnerId = request.UserId

@@ -24,7 +24,7 @@ public sealed class BoardHubMoveCardTests
         return new ApplicationDbContext(opts);
     }
 
-    private static (User owner, Domain.Entities.Board board, Column colA,
+    private static (User owner, Domain.Entities.BoardModel board, Column colA,
         Column colB, TaskCard card1, TaskCard card2) Seed(ApplicationDbContext db)
     {
         var owner = new User
@@ -34,7 +34,7 @@ public sealed class BoardHubMoveCardTests
         };
         db.Users.Add(owner);
 
-        var board = new Domain.Entities.Board
+        var board = new Domain.Entities.BoardModel
             { Name = "Hub Board", OwnerId = owner.Id, Owner = owner };
         db.Boards.Add(board);
 

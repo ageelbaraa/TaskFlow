@@ -18,7 +18,7 @@ public sealed class AddCommentCommandHandlerTests
         return new ApplicationDbContext(opts);
     }
 
-    private static (User owner, Domain.Entities.Board board, Column col, TaskCard card)
+    private static (User owner, Domain.Entities.BoardModel board, Column col, TaskCard card)
         Seed(ApplicationDbContext db)
     {
         var owner = new User
@@ -28,7 +28,7 @@ public sealed class AddCommentCommandHandlerTests
         };
         db.Users.Add(owner);
 
-        var board = new Domain.Entities.Board
+        var board = new Domain.Entities.BoardModel
             { Name = "B", OwnerId = owner.Id, Owner = owner };
         db.Boards.Add(board);
 

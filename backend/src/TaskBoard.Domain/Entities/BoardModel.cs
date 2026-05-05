@@ -3,7 +3,7 @@ using TaskBoard.Domain.Common;
 namespace TaskBoard.Domain.Entities;
 
 /// <summary>Represents a Kanban board owned by a user and shared with members.</summary>
-public class Board : BaseEntity
+public class BoardModel : BaseEntity
 {
     /// <summary>Gets or sets the display name of the board.</summary>
     public string Name { get; set; } = string.Empty;

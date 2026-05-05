@@ -19,7 +19,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<User> Users => Set<User>();
 
     /// <inheritdoc />
-    public DbSet<Board> Boards => Set<Board>();
+    public DbSet<BoardModel> Boards => Set<BoardModel>();
 
     /// <inheritdoc />
     public DbSet<BoardMember> BoardMembers => Set<BoardMember>();

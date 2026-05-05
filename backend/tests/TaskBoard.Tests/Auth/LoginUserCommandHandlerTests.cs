@@ -5,6 +5,7 @@ using TaskBoard.Application.Auth.Commands.LoginUser;
 using TaskBoard.Application.Common.Interfaces;
 using TaskBoard.Domain.Entities;
 using TaskBoard.Infrastructure.Persistence;
+using TaskBoard.Infrastructure.Services;
 using Xunit;
 
 namespace TaskBoard.Tests.Auth;
@@ -12,6 +13,9 @@ namespace TaskBoard.Tests.Auth;
 /// <summary>Unit tests for <see cref="LoginUserCommandHandler"/>.</summary>
 public sealed class LoginUserCommandHandlerTests
 {
+    // Real hasher — PasswordHasher is a pure, stateless wrapper around BCrypt.
+    private static readonly IPasswordHasher Hasher = new PasswordHasher();
+
     private static ApplicationDbContext CreateInMemoryContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -26,7 +30,7 @@ public sealed class LoginUserCommandHandlerTests
         {
             Name = "Test User",
             Email = email.ToLowerInvariant(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(plainPassword),
+            PasswordHash = Hasher.Hash(plainPassword),
             Role = Domain.Enums.UserRole.Member
         };
         db.Users.Add(user);
@@ -37,21 +41,18 @@ public sealed class LoginUserCommandHandlerTests
     [Fact]
     public async Task Handle_CorrectCredentials_ReturnsSuccessWithToken()
     {
-        // Arrange
         using var db = CreateInMemoryContext();
         SeedUser(db, "carol@example.com", "Secure123");
 
         var jwtMock = new Mock<IJwtService>();
         jwtMock.Setup(j => j.GenerateToken(It.IsAny<User>())).Returns("valid-token");
 
-        var handler = new LoginUserCommandHandler(db, jwtMock.Object);
+        var handler = new LoginUserCommandHandler(db, jwtMock.Object, Hasher);
 
-        // Act
         var result = await handler.Handle(
             new LoginUserCommand("carol@example.com", "Secure123"),
             CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.AccessToken.Should().Be("valid-token");
     }
@@ -59,19 +60,16 @@ public sealed class LoginUserCommandHandlerTests
     [Fact]
     public async Task Handle_WrongPassword_ReturnsFailure()
     {
-        // Arrange
         using var db = CreateInMemoryContext();
         SeedUser(db, "dave@example.com", "Correct1");
 
         var jwtMock = new Mock<IJwtService>();
-        var handler = new LoginUserCommandHandler(db, jwtMock.Object);
+        var handler = new LoginUserCommandHandler(db, jwtMock.Object, Hasher);
 
-        // Act
         var result = await handler.Handle(
             new LoginUserCommand("dave@example.com", "WrongPass"),
             CancellationToken.None);
 
-        // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle(e => e.Contains("Invalid email or password"));
     }
@@ -79,17 +77,14 @@ public sealed class LoginUserCommandHandlerTests
     [Fact]
     public async Task Handle_UnknownEmail_ReturnsFailure()
     {
-        // Arrange
         using var db = CreateInMemoryContext();
         var jwtMock = new Mock<IJwtService>();
-        var handler = new LoginUserCommandHandler(db, jwtMock.Object);
+        var handler = new LoginUserCommandHandler(db, jwtMock.Object, Hasher);
 
-        // Act
         var result = await handler.Handle(
             new LoginUserCommand("nobody@example.com", "Password1"),
             CancellationToken.None);
 
-        // Assert
         result.IsFailure.Should().BeTrue();
     }
 }

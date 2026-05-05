@@ -12,12 +12,17 @@ public sealed class LoginUserCommandHandler
 {
     private readonly IApplicationDbContext _db;
     private readonly IJwtService _jwt;
+    private readonly IPasswordHasher _hasher;
 
     /// <summary>Initializes the handler with required services.</summary>
-    public LoginUserCommandHandler(IApplicationDbContext db, IJwtService jwt)
+    public LoginUserCommandHandler(
+        IApplicationDbContext db,
+        IJwtService jwt,
+        IPasswordHasher hasher)
     {
         _db = db;
         _jwt = jwt;
+        _hasher = hasher;
     }
 
     /// <inheritdoc />
@@ -28,7 +33,9 @@ public sealed class LoginUserCommandHandler
         var user = await _db.Users
             .FirstOrDefaultAsync(u => u.Email == request.Email.ToLowerInvariant(), cancellationToken);
 
-        if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        // Separate null-check from hash-verify so the compiler knows 'user'
+        // is non-null at the GenerateToken call site (fixes CS8604).
+        if (user is null || !_hasher.Verify(request.Password, user.PasswordHash))
             return Result<AuthResponseDto>.Failure("Invalid email or password.");
 
         string token = _jwt.GenerateToken(user);

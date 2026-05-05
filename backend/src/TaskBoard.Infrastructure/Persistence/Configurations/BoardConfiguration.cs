@@ -4,11 +4,11 @@ using TaskBoard.Domain.Entities;
 
 namespace TaskBoard.Infrastructure.Persistence.Configurations;
 
-/// <summary>Configures the <see cref="Board"/> entity mapping.</summary>
-internal sealed class BoardConfiguration : IEntityTypeConfiguration<Board>
+/// <summary>Configures the <see cref="BoardModel"/> entity mapping.</summary>
+internal sealed class BoardConfiguration : IEntityTypeConfiguration<BoardModel>
 {
     /// <inheritdoc />
-    public void Configure(EntityTypeBuilder<Board> builder)
+    public void Configure(EntityTypeBuilder<BoardModel> builder)
     {
         builder.HasKey(b => b.Id);
 

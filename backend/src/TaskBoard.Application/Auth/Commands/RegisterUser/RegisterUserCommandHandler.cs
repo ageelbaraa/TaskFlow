@@ -14,12 +14,17 @@ public sealed class RegisterUserCommandHandler
 {
     private readonly IApplicationDbContext _db;
     private readonly IJwtService _jwt;
+    private readonly IPasswordHasher _hasher;
 
     /// <summary>Initializes the handler with required services.</summary>
-    public RegisterUserCommandHandler(IApplicationDbContext db, IJwtService jwt)
+    public RegisterUserCommandHandler(
+        IApplicationDbContext db,
+        IJwtService jwt,
+        IPasswordHasher hasher)
     {
         _db = db;
         _jwt = jwt;
+        _hasher = hasher;
     }
 
     /// <inheritdoc />
@@ -37,7 +42,7 @@ public sealed class RegisterUserCommandHandler
         {
             Name = request.Name.Trim(),
             Email = request.Email.ToLowerInvariant(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            PasswordHash = _hasher.Hash(request.Password),
             Role = UserRole.Member
         };
 

@@ -10,7 +10,7 @@ public class BoardMember : BaseEntity
     public Guid BoardId { get; set; }
 
     /// <summary>Gets or sets the board navigation property.</summary>
-    public Board Board { get; set; } = null!;
+    public BoardModel Board { get; set; } = null!;
 
     /// <summary>Gets or sets the member's user identifier.</summary>
     public Guid UserId { get; set; }
